@@ -13,17 +13,24 @@ public class Event {
      */
     private String code;
     /**
-     * 原始状态
+     * 原始状态code
      */
-    private Status fromStatus;
+    private String fromStatus;
     /**
-     * 目标状态
+     * 目标状态code
      */
-    private Status toStatus;
+    private String toStatus;
     /**
      * 处理器
      */
     private Handler handler;
+
+    public Event(String code, String fromStatusCode, String toStatusCode, Handler handler) {
+        this.code = code;
+        this.fromStatus = fromStatusCode;
+        this.toStatus = toStatusCode;
+        this.handler = handler;
+    }
 
     public String getCode() {
         return code;
@@ -33,19 +40,19 @@ public class Event {
         this.code = code;
     }
 
-    public Status getFromStatus() {
+    public String getFromStatus() {
         return fromStatus;
     }
 
-    public void setFromStatus(Status fromStatus) {
+    public void setFromStatus(String fromStatus) {
         this.fromStatus = fromStatus;
     }
 
-    public Status getToStatus() {
+    public String getToStatus() {
         return toStatus;
     }
 
-    public void setToStatus(Status toStatus) {
+    public void setToStatus(String toStatus) {
         this.toStatus = toStatus;
     }
 

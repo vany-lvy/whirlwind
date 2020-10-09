@@ -5,9 +5,8 @@ import cn.kunm.whirlwind.model.Event;
 import cn.kunm.whirlwind.model.Handler;
 import cn.kunm.whirlwind.model.Status;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.lang.reflect.Array;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -23,7 +22,7 @@ public class StatusMachine {
 
     private final ReentrantLock lock = new ReentrantLock();
     /**
-     * 同时发起多个事件时,会带有锁定,锁定超过超时时间,则报错
+     * 同时发起多个事件时,会带有锁定,锁定超过超时时间,则报错.单位:秒
      */
     private Integer timeout = 3;
 
@@ -32,12 +31,22 @@ public class StatusMachine {
      */
     private Set<Status> allStatus;
 
+    /**
+     * 当前状态
+     */
     private Status currentStatus;
 
+    /**
+     * 事件触发后的上下文
+     */
     private Context context;
 
+    /**
+     * 状态code和状态实例的映射关系
+     */
+    private Map<String, Status> allStatusMap;
+
     public StatusMachine(Set<Status> allStatus) {
-        currentStatus = checkAllStatus(allStatus);
         this.allStatus = allStatus;
     }
 
@@ -53,6 +62,9 @@ public class StatusMachine {
         if (statusCodes.size() != allStatus.size()) {
             throw new IllegalArgumentException("each state requires a unique code");
         }
+
+        allStatusMap = allStatus.stream().collect(Collectors.toMap(Status::getCode, status -> status));
+
         Set<Status> startStatus = allStatus.stream().filter(status -> status.isStart()).collect(Collectors.toSet());
         if (Objects.isNull(startStatus) || startStatus.isEmpty() || startStatus.size() != 1) {
             throw new IllegalArgumentException("start status is null or multiple");
@@ -65,24 +77,51 @@ public class StatusMachine {
     }
 
     /**
+     * 开始状态机
+     */
+    public void start(){
+        currentStatus = checkAllStatus(allStatus);
+    }
+
+    /**
+     * 重置状态机
+     */
+    public void reset(){
+        currentStatus = checkAllStatus(allStatus);
+    }
+
+    /**
+     * 检查状态机是否启动成功
+     * @throws IllegalAccessException
+     */
+    private void startCheck() throws IllegalAccessException {
+        if (Objects.isNull(currentStatus)) {
+            throw new IllegalAccessException("The state machine don't start");
+        }
+    }
+
+    /**
      * 触发事件
      *
      * @param event 被触发的事件
      */
     public void sendEvent(Event event) throws IllegalAccessException, InterruptedException {
+        startCheck();
         if (lock.tryLock(timeout, TimeUnit.SECONDS)) {
             try {
                 String code = event.getCode();
                 Handler handler = event.getHandler();
-                Status fromStatus = event.getFromStatus();
-                Status toStatus = event.getToStatus();
+                Status fromStatus = allStatusMap.get(event.getFromStatus());
+                Status toStatus = allStatusMap.get(event.getToStatus());
                 check(code, handler, fromStatus, toStatus);
                 setContext(event, fromStatus, toStatus);
                 handler.execute(this.context);
                 this.currentStatus = toStatus;
             } catch (Exception e) {
-                lock.unlock();
                 throw e;
+            }finally {
+                lock.unlock();
+                this.context = null;
             }
         }
     }
@@ -110,6 +149,9 @@ public class StatusMachine {
      * @throws IllegalAccessException
      */
     private void check(String code, Handler handler, Status fromStatus, Status toStatus) throws IllegalAccessException {
+        if (!Objects.equals(this.currentStatus.getCode(), fromStatus.getCode())) {
+            throw new IllegalAccessException("The current state error");
+        }
         if (code == null || code.length() < 1) {
             throw new IllegalAccessException("you must set event code");
         }
@@ -125,10 +167,18 @@ public class StatusMachine {
         if (toStatus.isStart()) {
             throw new IllegalAccessException("target status is start status:" + toStatus.getCode());
         }
-        List<Status> allowNextStatus = fromStatus.getAllowNextStatus();
-        if (!allowNextStatus.stream().map(Status::getCode).collect(Collectors.toSet()).contains(toStatus.getCode())) {
-            throw new IllegalAccessException("event:" + code + ",target status not allow,");
+        Set<Status> allowNextStatus = fromStatus.getAllowNextStatus();
+        // 如果允许的下一状态为空则允许到终止状态
+        if (Objects.isNull(allowNextStatus) || allowNextStatus.isEmpty()) {
+            if (!toStatus.isEnd()) {
+                throw new IllegalAccessException("event:" + code + ",target status:" + toStatus.getCode() + " not allow,");
+            }
+        }else{
+            if (!allowNextStatus.stream().map(Status::getCode).collect(Collectors.toSet()).contains(toStatus.getCode())) {
+                throw new IllegalAccessException("event:" + code + ",target status:" + toStatus.getCode() + " not allow,");
+            }
         }
+
     }
 
     public Set<Status> getAllStatus() {

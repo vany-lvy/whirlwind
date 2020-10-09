@@ -1,6 +1,7 @@
 package cn.kunm.whirlwind.model;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * @Desc: 状态
@@ -21,7 +22,7 @@ public class Status {
     /**
      * 允许的后续状态集合
      */
-    private List<Status> allowNextStatus;
+    private Set<Status> allowNextStatus;
     /**
      * 是否一个起始状态
      */
@@ -31,12 +32,22 @@ public class Status {
      */
     private boolean isEnd;
 
-    public String getCode() {
-        return code;
+    public Status(String code, boolean isStart, boolean isEnd) {
+        this.code = code;
+        this.desc = code;
+        this.isStart = isStart;
+        this.isEnd = isEnd;
     }
 
-    public void setCode(String code) {
+    public Status(String code) {
         this.code = code;
+        this.desc = code;
+        this.isStart = Boolean.FALSE;
+        this.isEnd = Boolean.FALSE;
+    }
+
+    public String getCode() {
+        return code;
     }
 
     public String getDesc() {
@@ -47,11 +58,14 @@ public class Status {
         this.desc = desc;
     }
 
-    public List<Status> getAllowNextStatus() {
+    public Set<Status> getAllowNextStatus() {
         return allowNextStatus;
     }
 
-    public void setAllowNextStatus(List<Status> allowNextStatus) {
+    public void setAllowNextStatus(Set<Status> allowNextStatus) {
+        if (this.allowNextStatus != null && this.allowNextStatus.size() > 0) {
+            throw new IllegalArgumentException("Not allowed to repeat set allowNextStatus value");
+        }
         this.allowNextStatus = allowNextStatus;
     }
 
@@ -59,15 +73,8 @@ public class Status {
         return isStart;
     }
 
-    public void setStart(boolean start) {
-        isStart = start;
-    }
-
     public boolean isEnd() {
         return isEnd;
     }
 
-    public void setEnd(boolean end) {
-        isEnd = end;
-    }
 }
