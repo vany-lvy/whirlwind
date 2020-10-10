@@ -47,7 +47,7 @@ public class ProcessTest {
 
         Event eA = new Event("ea", "start", "midA", new HS());
         Event eB = new Event("eb", "midA", "midB", new HA());
-        Event eC = new Event("ec", "midB", "midC", new HE());
+        Event eC = new Event("ec", "midB", "midC", new HC());
         Event eE = new Event("ee", "midC", "end", new HE());
         sm.sendEvent(eA);
         sm.sendEvent(eB);
@@ -60,39 +60,44 @@ public class ProcessTest {
     class HS implements Handler{
 
         @Override
-        public void execute(Context context) {
+        public Object execute(Context context) {
             System.out.println("hs");
+            return "hs";
         }
     }
 
     class HA implements Handler{
 
         @Override
-        public void execute(Context context) {
+        public Object execute(Context context) {
             System.out.println("ha");
+            return "ha";
         }
     }
 
     class HB implements Handler{
 
         @Override
-        public void execute(Context context) {
+        public Object execute(Context context) {
             System.out.println("hb");
+            return "hb";
         }
     }
     class HC implements Handler{
 
         @Override
-        public void execute(Context context) {
+        public Object execute(Context context) {
             System.out.println("hc");
+            return "hc";
         }
     }
 
     class HE implements Handler{
 
         @Override
-        public void execute(Context context) {
+        public Object execute(Context context) {
             System.out.println("he");
+            return "he";
         }
     }
 

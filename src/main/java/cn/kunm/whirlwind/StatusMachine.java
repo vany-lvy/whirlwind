@@ -61,7 +61,7 @@ public class StatusMachine {
         Status start = null;
         Set<String> statusCodes = allStatus.stream().map(Status::getCode).collect(Collectors.toSet());
         if (statusCodes.size() != allStatus.size()) {
-            throw new IllegalArgumentException("each state requires a unique code");
+            throw new IllegalArgumentException("each status requires a unique code");
         }
 
         allStatusMap = allStatus.stream().collect(Collectors.toMap(Status::getCode, status -> status));
@@ -80,22 +80,23 @@ public class StatusMachine {
     /**
      * 开始状态机
      */
-    public void start(){
+    public void start() {
         currentStatus = checkAllStatus(allStatus);
     }
 
     /**
      * 重置状态机
      */
-    public void reset(){
+    public void reset() {
         currentStatus = checkAllStatus(allStatus);
     }
 
     /**
      * 检查状态机是否启动成功
+     *
      * @throws IllegalAccessException
      */
-    private void startCheck() throws IllegalAccessException {
+    private void startupCheck() throws IllegalAccessException {
         if (Objects.isNull(currentStatus)) {
             throw new IllegalAccessException("The state machine don't start");
         }
@@ -106,50 +107,68 @@ public class StatusMachine {
      *
      * @param event 被触发的事件
      */
-    public void sendEvent(Event event) throws IllegalAccessException, InterruptedException {
-        startCheck();
+    public Object sendEvent(Event event) throws IllegalAccessException, InterruptedException {
+        startupCheck();
+        Object result = null;
         if (lock.tryLock(timeout, TimeUnit.SECONDS)) {
             try {
                 String code = event.getCode();
                 Handler handler = event.getHandler();
-                Status fromStatus = allStatusMap.get(event.getFromStatus());
-                Status toStatus = allStatusMap.get(event.getToStatus());
-                check(code, handler, fromStatus, toStatus);
-                setContext(event, fromStatus, toStatus);
-                handler.execute(this.context);
-                this.currentStatus = toStatus;
+                check(code, handler, event);
+                result = doStatusChange(event, handler);
             } catch (Exception e) {
                 throw e;
-            }finally {
+            } finally {
                 lock.unlock();
                 this.context = null;
             }
         }
+        return result;
+    }
+
+    /**
+     * 执行状态变更
+     *
+     * @param event 事件
+     * @param handler 处理器
+     * @return
+     */
+    private Object doStatusChange(Event event, Handler handler) {
+        Status fromStatus = allStatusMap.get(event.getFromStatus());
+        Status toStatus = allStatusMap.get(event.getToStatus());
+        Object result;
+        setContext(event, fromStatus, toStatus);
+        result = handler.execute(this.context);
+        this.currentStatus = toStatus;
+        return result;
     }
 
     /**
      * 设置处理器上下文
-     * @param event 触发的事件
+     *
+     * @param event      触发的事件
      * @param fromStatus 触发状态
-     * @param toStatus 目标状态
+     * @param toStatus   目标状态
      */
     private void setContext(Event event, Status fromStatus, Status toStatus) {
         this.context = new Context();
         this.context.setEvent(event);
         this.context.setFromStatus(fromStatus);
         this.context.setToStatus(toStatus);
+        this.context.setStatusMachine(this);
     }
 
     /**
      * 检查事件和状态流转是否正确
      *
-     * @param code       事件code
-     * @param handler    处理器实例
-     * @param fromStatus 触发状态
-     * @param toStatus   目标状态
+     * @param code     事件code
+     * @param handler  处理器实例
+     * @param event    事件
      * @throws IllegalAccessException
      */
-    private void check(String code, Handler handler, Status fromStatus, Status toStatus) throws IllegalAccessException {
+    private void check(String code, Handler handler, Event event) throws IllegalAccessException {
+        Status fromStatus = allStatusMap.get(event.getFromStatus());
+        Status toStatus = allStatusMap.get(event.getToStatus());
         if (!Objects.equals(this.currentStatus.getCode(), fromStatus.getCode())) {
             throw new IllegalAccessException("The current state error");
         }
@@ -174,7 +193,7 @@ public class StatusMachine {
             if (!toStatus.isEnd()) {
                 throw new IllegalAccessException("event:" + code + ",target status:" + toStatus.getCode() + " not allow,");
             }
-        }else{
+        } else {
             if (!allowNextStatus.stream().map(Status::getCode).collect(Collectors.toSet()).contains(toStatus.getCode())) {
                 throw new IllegalAccessException("event:" + code + ",target status:" + toStatus.getCode() + " not allow,");
             }

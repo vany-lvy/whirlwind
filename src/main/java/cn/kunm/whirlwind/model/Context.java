@@ -1,5 +1,7 @@
 package cn.kunm.whirlwind.model;
 
+import cn.kunm.whirlwind.StatusMachine;
+
 /**
  * @Desc: 上下文
  * @Date: 2020/9/29
@@ -8,6 +10,7 @@ package cn.kunm.whirlwind.model;
  * @modified_date: 2020/9/29
  */
 public class Context {
+    private StatusMachine statusMachine;
     private Status fromStatus;
     private Status toStatus;
     private Event event;
@@ -34,5 +37,13 @@ public class Context {
 
     public void setEvent(Event event) {
         this.event = event;
+    }
+
+    public StatusMachine getStatusMachine() {
+        return statusMachine;
+    }
+
+    public void setStatusMachine(StatusMachine statusMachine) {
+        this.statusMachine = statusMachine;
     }
 }

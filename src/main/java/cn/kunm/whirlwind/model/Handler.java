@@ -13,6 +13,6 @@ public interface Handler {
      * 处理器的执行逻辑
      * @param context 上下文
      */
-    void execute(Context context);
+    Object execute(Context context);
 
 }
